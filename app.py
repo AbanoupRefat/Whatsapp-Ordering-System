@@ -203,6 +203,8 @@ if 'show_review' not in st.session_state:
 SHEET_URL = st.secrets["google"]["sheet_id"] # Replace with your actual sheet ID
 WHATSAPP_NUMBER = st.secrets["whatsapp"]["number"] # Replace with actual WhatsApp number
 
+ITEMS_PER_PAGE = 10 # Number of items to display per page
+
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_google_sheet_data_real():
     """Load data from real Google Sheets - Use this when API is set up"""
@@ -410,8 +412,45 @@ def main():
             st.warning("لا توجد منتجات تطابق البحث")
             return
         
-        # Display categories and products
+        # Flatten categories into a single list of items for pagination
+        all_filtered_items = []
         for category in filtered_categories:
+            all_filtered_items.extend(category['items'])
+            
+        # Calculate pagination variables
+        total_items_filtered = len(all_filtered_items)
+        total_pages = math.ceil(total_items_filtered / ITEMS_PER_PAGE)
+        
+        # Ensure current_page is within bounds
+        if st.session_state.current_page >= total_pages and total_pages > 0:
+            st.session_state.current_page = total_pages - 1
+        elif st.session_state.current_page < 0:
+            st.session_state.current_page = 0
+
+        # Get items for the current page
+        start_idx = st.session_state.current_page * ITEMS_PER_PAGE
+        end_idx = start_idx + ITEMS_PER_PAGE
+        items_on_current_page = all_filtered_items[start_idx:end_idx]
+        
+        # Group items by category for display
+        paginated_categories = []
+        current_paginated_category_name = ""
+        for item in items_on_current_page:
+            # Find the category this item belongs to in the original filtered_categories
+            # This is a bit inefficient, but ensures categories are displayed correctly
+            found_category_name = "منتجات أخرى" # Default
+            for cat in filtered_categories:
+                if item in cat['items']:
+                    found_category_name = cat['name']
+                    break
+            
+            if found_category_name != current_paginated_category_name:
+                paginated_categories.append({'name': found_category_name, 'items': []})
+                current_paginated_category_name = found_category_name
+            paginated_categories[-1]['items'].append(item)
+
+        # Display categories and products
+        for category in paginated_categories:
             # Category header
             st.markdown(f'<div class="category-header">{category["name"]}</div>', unsafe_allow_html=True)
             
@@ -428,39 +467,55 @@ def main():
                 minus_key = f"minus_{hash(product_name)}_{id(item)}"
                 plus_key = f"plus_{hash(product_name)}_{id(item)}"
                 
-                # Product card
-                card_html = f'''
-                <div class="product-card">
-                    <div class="product-row">
-                        <div class="product-info">
-                            <div class="product-name">{product_name}</div>
-                            <div class="product-origin">المنشأ: {origin}</div>
-                            <div class="product-price">{price} جنيه</div>
-                            {f'<div class="subtotal">المجموع: {subtotal} جنيه</div>' if current_qty > 0 else ''}
-                        </div>
-                        <div class="quantity-section">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                '''
-                
-                st.markdown(card_html, unsafe_allow_html=True)
-                
-                # Quantity controls in columns
-                col1, col2, col3 = st.columns([1, 1, 1])
-                
-                with col1:
-                    if st.button("−", key=minus_key, disabled=current_qty <= 0, help="تقليل الكمية"):
-                        update_quantity(product_name, -1)
-                        st.rerun()
-                
-                with col2:
-                    st.markdown(f'<div class="qty-display">{current_qty}</div>', unsafe_allow_html=True)
-                
-                with col3:
-                    if st.button("+", key=plus_key, help="زيادة الكمية"):
-                        update_quantity(product_name, 1)
-                        st.rerun()
-                
-                st.markdown('</div></div></div>', unsafe_allow_html=True)
+                # Product card using st.container and st.columns
+                with st.container():
+                    st.markdown("""<div class="product-card">""", unsafe_allow_html=True)
+                    
+                    col_info, col_qty = st.columns([3, 2])
+                    
+                    with col_info:
+                        st.markdown(f'''
+                            <div class="product-info">
+                                <div class="product-name">{product_name}</div>
+                                <div class="product-origin">المنشأ: {origin}</div>
+                                <div class="product-price">{price} جنيه</div>
+                                {f'<div class="subtotal">المجموع: {subtotal} جنيه</div>' if current_qty > 0 else ''}
+                            </div>
+                        ''', unsafe_allow_html=True)
+                        
+                    with col_qty:
+                        st.markdown("""<div class="quantity-section">""", unsafe_allow_html=True)
+                        qty_col1, qty_col2, qty_col3 = st.columns([1, 1, 1])
+                        
+                        with qty_col1:
+                            if st.button("−", key=minus_key, disabled=current_qty <= 0, help="تقليل الكمية"):
+                                update_quantity(product_name, -1)
+                                st.rerun()
+                        
+                        with qty_col2:
+                            st.markdown(f'<div class="qty-display">{current_qty}</div>', unsafe_allow_html=True)
+                        
+                        with qty_col3:
+                            if st.button("+", key=plus_key, help="زيادة الكمية"):
+                                update_quantity(product_name, 1)
+                                st.rerun()
+                        st.markdown("""</div>""", unsafe_allow_html=True) # Close quantity-section
+                    
+                    st.markdown("""</div>""", unsafe_allow_html=True) # Close product-card
+        
+        # Pagination controls at the bottom
+        if total_pages > 1:
+            pagination_cols = st.columns([1, 2, 1])
+            with pagination_cols[0]:
+                if st.button("الصفحة السابقة", key="prev_page", disabled=st.session_state.current_page == 0):
+                    st.session_state.current_page -= 1
+                    st.rerun()
+            with pagination_cols[1]:
+                st.markdown(f"<div style='text-align:center; font-size: 18px; font-weight: bold;'>الصفحة {st.session_state.current_page + 1} من {total_pages}</div>", unsafe_allow_html=True)
+            with pagination_cols[2]:
+                if st.button("الصفحة التالية", key="next_page", disabled=st.session_state.current_page == total_pages - 1):
+                    st.session_state.current_page += 1
+                    st.rerun()
         
         # Review Order Button
         selected_items = get_selected_items()
