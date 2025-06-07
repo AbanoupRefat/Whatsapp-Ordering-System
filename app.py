@@ -53,8 +53,103 @@ st.markdown("""
         text-align: right;
     }
     
-    .product-table {
+    .product-card {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 12px;
+        margin: 8px 0;
         direction: rtl;
+    }
+    
+    .product-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .product-info {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .product-name {
+        font-weight: bold;
+        font-size: 14px;
+        margin-bottom: 4px;
+        color: #333;
+    }
+    
+    .product-origin {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 4px;
+    }
+    
+    .product-price {
+        font-weight: bold;
+        color: #0066cc;
+        font-size: 14px;
+    }
+    
+    .quantity-section {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 120px;
+        justify-content: flex-end;
+    }
+    
+    .qty-btn {
+        background-color: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .qty-btn:hover {
+        background-color: #0052a3;
+    }
+    
+    .qty-btn:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+    }
+    
+    .qty-display {
+        min-width: 30px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 14px;
+        color: #333;
+    }
+    
+    .subtotal {
+        font-size: 12px;
+        color: #28a745;
+        font-weight: bold;
+        margin-top: 4px;
+    }
+    
+    .category-header {
+        background: linear-gradient(135deg, #0066cc, #004499);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin: 20px 0 10px 0;
+        text-align: center;
+        font-weight: bold;
+        font-size: 16px;
     }
     
     .summary-card {
@@ -66,29 +161,26 @@ st.markdown("""
         direction: rtl;
     }
     
-    .quantity-controls {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        direction: ltr;
-    }
-    
-    .quantity-btn {
-        background-color: #0066cc;
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        font-size: 16px;
-        cursor: pointer;
-    }
-    
-    .quantity-display {
-        min-width: 40px;
-        text-align: center;
-        font-weight: bold;
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+        .product-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .product-info {
+            text-align: right;
+            margin-bottom: 8px;
+        }
+        
+        .quantity-section {
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .main-title {
+            font-size: 1.8rem;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -108,7 +200,7 @@ if 'show_review' not in st.session_state:
     st.session_state.show_review = False
 
 # Google Sheets configuration
-SHEET_URL = st.secrets["google"]["sheet_url"] # Replace with your actual sheet URL
+SHEET_URL = st.secrets["google"]["sheet_id"] # Replace with your actual sheet ID
 WHATSAPP_NUMBER = st.secrets["whatsapp"]["number"] # Replace with actual WhatsApp number
 
 def load_google_sheet_data_real():
@@ -122,7 +214,7 @@ def load_google_sheet_data_real():
         )
         
         gc = gspread.authorize(credentials)
-        sheet = gc.open_by_url(SHEET_URL).sheet1
+        sheet = gc.open_by_key(SHEET_URL).sheet1
         data = sheet.get_all_records()
         
         # Convert to DataFrame and ensure correct column names
@@ -135,115 +227,105 @@ def load_google_sheet_data_real():
         return pd.DataFrame()
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
-def load_google_sheet_data():
-    """Load data from Google Sheets"""
+def load_csv_data():
+    """Load data from the uploaded CSV file"""
     try:
-        # Real data based on your sheet structure
-        # Replace this with actual Google Sheets API call when ready
-        sample_data = {
-            'البند': [
-                'قلب طلمبه بونقرمال (سن ناعم)',
-                'قلب طلمبه بونقرمال (سن مشرشر)',
-                '(القصير) RB قلبطلمبه بنزين',
-                'قلب طلمبه بنزين MD (الطويل)',
-                'قلب طلمبه تيوسان (2 مخرج القصير)',
-                'قلب طلمبه سبورتاج (2 مخرج الطويل)',
-                'قلب طلمبه نيسان N17',
-                'قلب طلمبه باريس 1 كرولا 2008 1 فيجو',
-                'قلب باريس و كرولا 2014',
-                'قلب طلمبه كرولا 2001 (قيشه رفيعه)',
-                'قلب طلمبه شيفرولية كروز 1 اوبل استرا',
-                'قلب طلمبه مازدا 3',
-                'قلب طلمبه سوزوكي سويفت',
-                'قلب طلمبه ميتسوبيشي اتراج',
-                'قلب طلمبه رينو كليو',
-                'قلب طلمبه لانسر',
-                'قلب طلمبه هيونداي اكسنت',
-                'قلب طلمبه فولكس فاجن جيتا',
-                'قلب طلمبه نيسان تيدا',
-                'قلب طلمبه بيجو 301',
-                'قلب طلمبه دايو نوبيرا',
-                'قلب طلمبه مازدا 6',
-                'قلب طلمبه كيا سيراتو',
-                'قلب طلمبه هيونداي النترا',
-                'قلب طلمبه تويوتا كامري'
-            ],
-            'المنشأ': [
-                'كوريا', 'كوريا', 'كوريا', 'كوريا', 'كوريا',
-                'كوريا', 'كوريا', 'كوريا', 'كوريا', 'كوريا',
-                'كوريا', 'كوريا', 'كوريا', 'كوريا', 'كوريا',
-                'كوريا', 'كوريا', 'كوريا', 'كوريا', 'كوريا',
-                'كوريا', 'كوريا', 'كوريا', 'كوريا', 'كوريا'
-            ],
-            'السعر': [
-                415, 425, 573, 585, 762,
-                774, 567, 567, 691, 561,
-                756, 800, 589, 817, 650,
-                720, 580, 690, 620, 710,
-                590, 780, 640, 670, 750
-            ]
-        }
+        # Read the CSV file
+        df = pd.read_csv('test - قطع_غيار_السيارات.csv')
         
-        # Add more pump parts to simulate your full inventory
-        additional_pumps = [
-            'قلب طلمبه فورد فيستا', 'قلب طلمبه شيفرولية افيو', 'قلب طلمبه نيسان صني',
-            'قلب طلمبه هيونداي فيرنا', 'قلب طلمبه كيا ريو', 'قلب طلمبه مازدا 2',
-            'قلب طلمبه ميتسوبيشي كولت', 'قلب طلمبه سوزوكي التو', 'قلب طلمبه دايهاتسو تيريوس',
-            'قلب طلمبه هوندا سيفيك', 'قلب طلمبه اكورد', 'قلب طلمبه نيسان قشقاي',
-            'قلب طلمبه جيلي امجراند', 'قلب طلمبه بي واي دي F3', 'قلب طلمبه شيري تيجو',
-            'قلب طلمبه فولكس جولف', 'قلب طلمبه بولو', 'قلب طلمبه اوبل كورسا',
-            'قلب طلمبه فيات سيينا', 'قلب طلمبه رينو لوجان', 'قلب طلمبه سيمبول',
-            'قلب طلمبه بيجو 206', 'قلب طلمبه 308', 'قلب طلمبه سيتروين C4',
-            'قلب طلمبه C3', 'قلب طلمبه لادا جرانتا', 'قلب طلمبه فيستا',
-            'قلب طلمبه كالينا', 'قلب طلمبه سكودا اوكتافيا', 'قلب طلمبه فابيا',
-            'قلب طلمبه سيات ايبيزا', 'قلب طلمبه ليون', 'قلب طلمبه الفا روميو جولييتا'
-        ]
+        # Clean the data and handle empty rows
+        df = df.reset_index(drop=True)
         
-        # Add more items to reach 100+
-        for i, pump in enumerate(additional_pumps):
-            sample_data['البند'].append(pump)
-            sample_data['المنشأ'].append('كوريا')
-            sample_data['السعر'].append(500 + (i * 25))  # Varying prices
-            
-        # Add some other car parts categories
-        other_parts = [
-            'فلتر زيت محرك', 'فلتر هواء', 'فلتر وقود', 'فلتر مكيف',
-            'شمعات اشعال', 'كويل اشعال', 'حساس اكسجين', 'حساس كرنك',
-            'سير مولد', 'سير مكيف', 'مضخة مياه', 'ترموستات',
-            'فرامل امامية', 'فرامل خلفية', 'ديسك فرامل', 'طقم كلتش',
-            'بطارية سيارة', 'كوتش امامي', 'كوتش خلفي', 'بلف صبابات'
-        ]
+        # Identify empty rows (where all main columns are NaN or empty)
+        empty_mask = (
+            (df['البند'].isna() | (df['البند'] == '')) &
+            (df['المنشأ'].isna() | (df['المنشأ'] == '')) &
+            (df['السعر'].isna() | (df['السعر'] == ''))
+        )
         
-        origins = ['كوريا', 'اليابان', 'ألمانيا', 'تركيا', 'الصين']
+        # Mark empty rows for category separation
+        df['is_separator'] = empty_mask
         
-        for i, part in enumerate(other_parts):
-            sample_data['البند'].append(part)
-            sample_data['المنشأ'].append(origins[i % len(origins)])
-            sample_data['السعر'].append(200 + (i * 30))
+        # Fill missing prices with 0 for non-separator rows
+        df.loc[~df['is_separator'], 'السعر'] = df.loc[~df['is_separator'], 'السعر'].fillna(0)
         
-        return pd.DataFrame(sample_data)
-    
+        # Convert price to numeric
+        df['السعر'] = pd.to_numeric(df['السعر'], errors='coerce').fillna(0)
+        
+        return df
+        
     except Exception as e:
-        st.error(f"خطأ في تحميل البيانات: {str(e)}")
+        st.error(f"خطأ في تحميل البيانات من ملف CSV: {str(e)}")
         return pd.DataFrame()
 
-def filter_products(df: pd.DataFrame, search_term: str) -> pd.DataFrame:
-    """Filter products based on search term"""
+def process_data_with_categories(df):
+    """Process data to identify categories based on separators"""
+    if df.empty:
+        return []
+    
+    categories = []
+    current_category = []
+    category_name = "المنتجات"  # Default category name
+    
+    for idx, row in df.iterrows():
+        if row.get('is_separator', False):
+            # If we have items in current category, save it
+            if current_category:
+                categories.append({
+                    'name': category_name,
+                    'items': current_category.copy()
+                })
+                current_category = []
+            
+            # Look for the next non-empty row to determine category name
+            next_items = df[idx+1:idx+10]  # Look ahead a few rows
+            non_empty = next_items[~next_items.get('is_separator', True)]
+            if not non_empty.empty:
+                first_item = non_empty.iloc[0]['البند']
+                if 'بوبينه' in str(first_item):
+                    category_name = "البوبينات"
+                elif 'حساس' in str(first_item):
+                    category_name = "الحساسات"
+                elif 'شريط' in str(first_item):
+                    category_name = "شرائط الإيرباج"
+                else:
+                    category_name = "منتجات أخرى"
+        else:
+            # Add non-separator rows to current category
+            if not (pd.isna(row['البند']) or row['البند'] == ''):
+                current_category.append(row)
+    
+    # Add the last category if it has items
+    if current_category:
+        categories.append({
+            'name': category_name,
+            'items': current_category
+        })
+    
+    return categories
+
+def filter_categories(categories, search_term):
+    """Filter categories based on search term"""
     if not search_term:
-        return df
+        return categories
     
     search_term = search_term.lower()
-    mask = (
-        df['البند'].str.lower().str.contains(search_term, na=False) |
-        df['المنشأ'].str.lower().str.contains(search_term, na=False)
-    )
-    return df[mask]
-
-def paginate_dataframe(df: pd.DataFrame, page: int, items_per_page: int = 10):
-    """Paginate dataframe"""
-    start_idx = page * items_per_page
-    end_idx = start_idx + items_per_page
-    return df.iloc[start_idx:end_idx]
+    filtered_categories = []
+    
+    for category in categories:
+        filtered_items = []
+        for item in category['items']:
+            if (search_term in str(item['البند']).lower() or 
+                search_term in str(item['المنشأ']).lower()):
+                filtered_items.append(item)
+        
+        if filtered_items:
+            filtered_categories.append({
+                'name': category['name'],
+                'items': filtered_items
+            })
+    
+    return filtered_categories
 
 def update_quantity(product_name: str, change: int):
     """Update quantity for a product"""
@@ -261,34 +343,38 @@ def get_selected_items():
             selected[product] = qty
     return selected
 
-def calculate_total(selected_items: Dict[str, int], products_df: pd.DataFrame) -> tuple:
-    """Calculate total items and cost"""
-    if products_df.empty:
-        return 0, 0
-    
+def calculate_total_from_categories(selected_items: Dict[str, int], categories: List) -> tuple:
+    """Calculate total items and cost from categories"""
     total_items = sum(selected_items.values())
     total_cost = 0
     
+    # Create a lookup dictionary for prices
+    price_lookup = {}
+    for category in categories:
+        for item in category['items']:
+            price_lookup[item['البند']] = item['السعر']
+    
     for product, qty in selected_items.items():
-        product_row = products_df[products_df['البند'] == product]
-        if not product_row.empty:
-            price = product_row.iloc[0]['السعر']
+        if product in price_lookup:
+            price = price_lookup[product]
             total_cost += price * qty
     
     return total_items, total_cost
 
-def generate_whatsapp_message(selected_items: Dict[str, int], products_df: pd.DataFrame) -> str:
-    """Generate WhatsApp message"""
-    if products_df.empty:
-        return ""
-    
+def generate_whatsapp_message_from_categories(selected_items: Dict[str, int], categories: List) -> str:
+    """Generate WhatsApp message from categories"""
     message_lines = ["شركة المهندس لقطع غيار السيارات", "🧾 طلب جديد:", ""]
+    
+    # Create price lookup
+    price_lookup = {}
+    for category in categories:
+        for item in category['items']:
+            price_lookup[item['البند']] = item['السعر']
     
     total_cost = 0
     for product, qty in selected_items.items():
-        product_row = products_df[products_df['البند'] == product]
-        if not product_row.empty:
-            price = product_row.iloc[0]['السعر']
+        if product in price_lookup:
+            price = price_lookup[product]
             subtotal = price * qty
             total_cost += subtotal
             message_lines.append(f"- {product}: {qty} × {price} = {subtotal}")
@@ -312,13 +398,16 @@ def main():
     # Load data
     if st.session_state.products_data is None:
         with st.spinner('جاري تحميل البيانات...'):
-            st.session_state.products_data = load_google_sheet_data_real()
+            st.session_state.products_data = load_csv_data()
     
-    products_df = st.session_state.products_data
+    df = st.session_state.products_data
     
-    if products_df.empty:
+    if df.empty:
         st.error("لا توجد بيانات متاحة")
         return
+    
+    # Process data into categories
+    categories = process_data_with_categories(df)
     
     # New Order Button
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -333,7 +422,7 @@ def main():
         st.markdown("---")
         
         # Search box
-        search_col1, search_col2 = st.columns([2, 1])
+        search_col1, search_col2 = st.columns([3, 1])
         with search_col1:
             search_term = st.text_input(
                 "البحث في المنتجات",
@@ -343,92 +432,72 @@ def main():
             )
             if search_term != st.session_state.search_term:
                 st.session_state.search_term = search_term
-                st.session_state.current_page = 0
                 st.rerun()
         
-        # Filter products
-        filtered_df = filter_products(products_df, st.session_state.search_term)
+        # Filter categories
+        filtered_categories = filter_categories(categories, st.session_state.search_term)
         
-        if filtered_df.empty:
+        if not filtered_categories:
             st.warning("لا توجد منتجات تطابق البحث")
             return
         
-        # Pagination
-        items_per_page = 10
-        total_pages = math.ceil(len(filtered_df) / items_per_page)
-        
-        # Page navigation
-        if total_pages > 1:
-            nav_col1, nav_col2, nav_col3 = st.columns([1, 2, 1])
-            with nav_col2:
-                page_col1, page_col2, page_col3 = st.columns([1, 1, 1])
-                
-                with page_col1:
-                    if st.button("السابق", disabled=st.session_state.current_page == 0):
-                        st.session_state.current_page -= 1
-                        st.rerun()
-                
-                with page_col2:
-                    st.write(f"صفحة {st.session_state.current_page + 1} من {total_pages}")
-                
-                with page_col3:
-                    if st.button("التالي", disabled=st.session_state.current_page >= total_pages - 1):
-                        st.session_state.current_page += 1
-                        st.rerun()
-        
-        # Get current page data
-        current_page_df = paginate_dataframe(filtered_df, st.session_state.current_page, items_per_page)
-        
-        # Products table
-        st.markdown("### المنتجات المتاحة")
-        
-        for idx, row in current_page_df.iterrows():
-            product_name = row['البند']
-            origin = row['المنشأ']
-            price = row['السعر']
+        # Display categories and products
+        for category in filtered_categories:
+            # Category header
+            st.markdown(f'<div class="category-header">{category["name"]}</div>', unsafe_allow_html=True)
             
-            current_qty = st.session_state.quantities.get(product_name, 0)
-            subtotal = price * current_qty
-            
-            # Product row
-            with st.container():
-                col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 2, 1])
+            # Display products in this category
+            for item in category['items']:
+                product_name = item['البند']
+                origin = item['المنشأ']
+                price = item['السعر']
+                
+                current_qty = st.session_state.quantities.get(product_name, 0)
+                subtotal = price * current_qty
+                
+                # Create unique keys for buttons
+                minus_key = f"minus_{hash(product_name)}_{id(item)}"
+                plus_key = f"plus_{hash(product_name)}_{id(item)}"
+                
+                # Product card
+                card_html = f'''
+                <div class="product-card">
+                    <div class="product-row">
+                        <div class="product-info">
+                            <div class="product-name">{product_name}</div>
+                            <div class="product-origin">المنشأ: {origin}</div>
+                            <div class="product-price">{price} جنيه</div>
+                            {f'<div class="subtotal">المجموع: {subtotal} جنيه</div>' if current_qty > 0 else ''}
+                        </div>
+                        <div class="quantity-section">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                '''
+                
+                st.markdown(card_html, unsafe_allow_html=True)
+                
+                # Quantity controls in columns
+                col1, col2, col3 = st.columns([1, 1, 1])
                 
                 with col1:
-                    st.write(f"**{product_name}**")
-                    st.write(f"المنشأ: {origin}")
-                
-                with col2:
-                    st.write(f"**{price}** جنيه")
-                
-                with col3:
-                    # Quantity controls
-                    minus_key = f"minus_{product_name}_{idx}"
-                    plus_key = f"plus_{product_name}_{idx}"
-                    
-                    if st.button("-", key=minus_key, disabled=current_qty <= 0):
+                    if st.button("−", key=minus_key, disabled=current_qty <= 0, help="تقليل الكمية"):
                         update_quantity(product_name, -1)
                         st.rerun()
                 
-                with col4:
-                    st.write(f"الكمية: **{current_qty}**")
-                    if st.button("+", key=plus_key):
+                with col2:
+                    st.markdown(f'<div class="qty-display">{current_qty}</div>', unsafe_allow_html=True)
+                
+                with col3:
+                    if st.button("+", key=plus_key, help="زيادة الكمية"):
                         update_quantity(product_name, 1)
                         st.rerun()
                 
-                with col5:
-                    if current_qty > 0:
-                        st.write(f"**{subtotal}** جنيه")
-                    else:
-                        st.write("0 جنيه")
-                
-                st.markdown("---")
+                st.markdown('</div></div></div>', unsafe_allow_html=True)
         
         # Review Order Button
         selected_items = get_selected_items()
         if selected_items:
             st.markdown("### ملخص الطلبية")
-            total_items, total_cost = calculate_total(selected_items, products_df)
+            total_items, total_cost = calculate_total_from_categories(selected_items, categories)
             
             col1, col2 = st.columns(2)
             with col1:
@@ -446,17 +515,23 @@ def main():
     if st.session_state.show_review:
         selected_items = get_selected_items()
         if selected_items:
-            total_items, total_cost = calculate_total(selected_items, products_df)
+            total_items, total_cost = calculate_total_from_categories(selected_items, categories)
             
             st.markdown("---")
             st.markdown("## مراجعة الطلبية")
             
             # Selected items details
             st.markdown("### تفاصيل الطلبية:")
+            
+            # Create price lookup
+            price_lookup = {}
+            for category in categories:
+                for item in category['items']:
+                    price_lookup[item['البند']] = item['السعر']
+            
             for product, qty in selected_items.items():
-                product_row = products_df[products_df['البند'] == product]
-                if not product_row.empty:
-                    price = product_row.iloc[0]['السعر']
+                if product in price_lookup:
+                    price = price_lookup[product]
                     subtotal = price * qty
                     st.write(f"• **{product}**: {qty} × {price} = {subtotal} جنيه")
             
@@ -487,14 +562,13 @@ def main():
                     st.rerun()
             
             with col2:
-                whatsapp_url = generate_whatsapp_message(selected_items, products_df)
+                whatsapp_url = generate_whatsapp_message_from_categories(selected_items, categories)
                 st.markdown(f'<a href="{whatsapp_url}" target="_blank"><button style="background-color: #25D366; color: white; border: none; padding: 10px 20px; border-radius: 5px; font-size: 16px; width: 100%;">إرسال عبر واتساب</button></a>', unsafe_allow_html=True)
             
             with col3:
                 if st.button("طلبية جديدة", key="new_order_from_review"):
                     st.session_state.quantities = {}
                     st.session_state.show_review = False
-                    st.session_state.current_page = 0
                     st.session_state.search_term = ""
                     st.rerun()
 
