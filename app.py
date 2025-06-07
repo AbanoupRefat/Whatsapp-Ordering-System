@@ -53,7 +53,8 @@ st.markdown("""
         text-align: right;
     }
     
-    .product-card {
+    /* Apply product-card styling to the st.container that holds the product */
+    div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stHorizontalBlock"]) {
         background-color: #f8f9fa;
         border: 1px solid #dee2e6;
         border-radius: 8px;
@@ -62,7 +63,8 @@ st.markdown("""
         direction: rtl;
     }
     
-    .product-row {
+    /* Apply product-row styling to the st.columns div */
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stColumn"]) {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -75,26 +77,8 @@ st.markdown("""
         min-width: 200px;
     }
     
-    .product-name {
-        font-weight: bold;
-        font-size: 14px;
-        margin-bottom: 4px;
-        color: #333;
-    }
-    
-    .product-origin {
-        font-size: 12px;
-        color: #666;
-        margin-bottom: 4px;
-    }
-    
-    .product-price {
-        font-weight: bold;
-        color: #0066cc;
-        font-size: 14px;
-    }
-    
-    .quantity-section {
+    /* Apply quantity-section styling to the st.columns div for quantity controls */
+    div[data-testid="stHorizontalBlock"]:has(button[kind="secondary"]) { /* Targets the st.columns containing the buttons */
         display: flex;
         align-items: center;
         gap: 8px;
@@ -102,7 +86,7 @@ st.markdown("""
         justify-content: flex-end;
     }
     
-    .qty-btn {
+    .qty-btn { /* This class is applied to Streamlit buttons directly by default */
         background-color: #0066cc;
         color: white;
         border: none;
@@ -163,7 +147,8 @@ st.markdown("""
     
     /* Mobile optimizations */
     @media (max-width: 768px) {
-        .product-row {
+        /* Adjust product-row for mobile */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="stColumn"]) {
             flex-direction: column;
             align-items: stretch;
         }
@@ -173,7 +158,8 @@ st.markdown("""
             margin-bottom: 8px;
         }
         
-        .quantity-section {
+        /* Adjust quantity-section for mobile */
+        div[data-testid="stHorizontalBlock"]:has(button[kind="secondary"]) {
             justify-content: space-between;
             align-items: center;
         }
@@ -467,13 +453,11 @@ def main():
                 minus_key = f"minus_{hash(product_name)}_{id(item)}"
                 plus_key = f"plus_{hash(product_name)}_{id(item)}"
                 
-                # Product card using st.container and st.columns
+                # Product card
                 with st.container():
-                    st.markdown("""<div class="product-card">""", unsafe_allow_html=True)
+                    card_cols = st.columns([3, 2])
                     
-                    col_info, col_qty = st.columns([3, 2])
-                    
-                    with col_info:
+                    with card_cols[0]:
                         st.markdown(f'''
                             <div class="product-info">
                                 <div class="product-name">{product_name}</div>
@@ -483,25 +467,21 @@ def main():
                             </div>
                         ''', unsafe_allow_html=True)
                         
-                    with col_qty:
-                        st.markdown("""<div class="quantity-section">""", unsafe_allow_html=True)
-                        qty_col1, qty_col2, qty_col3 = st.columns([1, 1, 1])
+                    with card_cols[1]:
+                        qty_cols = st.columns([1, 1, 1])
                         
-                        with qty_col1:
+                        with qty_cols[0]:
                             if st.button("−", key=minus_key, disabled=current_qty <= 0, help="تقليل الكمية"):
                                 update_quantity(product_name, -1)
                                 st.rerun()
                         
-                        with qty_col2:
+                        with qty_cols[1]:
                             st.markdown(f'<div class="qty-display">{current_qty}</div>', unsafe_allow_html=True)
                         
-                        with qty_col3:
+                        with qty_cols[2]:
                             if st.button("+", key=plus_key, help="زيادة الكمية"):
                                 update_quantity(product_name, 1)
                                 st.rerun()
-                        st.markdown("""</div>""", unsafe_allow_html=True) # Close quantity-section
-                    
-                    st.markdown("""</div>""", unsafe_allow_html=True) # Close product-card
         
         # Pagination controls at the bottom
         if total_pages > 1:
